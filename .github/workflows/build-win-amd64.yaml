@@ -17,4 +17,5 @@ jobs:
       platform: win-amd64
       ref: ${{ github.ref }}
       publish_mode: artifact
+      artifact_name: rexglue-sdk-win-amd64
     secrets: inherit
