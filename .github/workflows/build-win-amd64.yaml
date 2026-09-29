@@ -16,5 +16,5 @@ jobs:
     with:
       platform: win-amd64
       ref: ${{ github.ref }}
-      publish_mode: release
+      publish_mode: artifact
     secrets: inherit
