@@ -317,10 +317,11 @@ bool Runtime::SetupVfs() {
   }
   REXSYS_DEBUG("  Mounted {} at {}", abs_game_root.string(), mount_path);
 
-  // Register symbolic links for game: and D:
+  // Register symbolic links for game:, d:, and Ground Zeroes' gamedata:
   file_system_->RegisterSymbolicLink("game:", mount_path);
   file_system_->RegisterSymbolicLink("d:", mount_path);
-  REXSYS_DEBUG("  Registered symbolic links: game:, d:");
+  file_system_->RegisterSymbolicLink("gamedata:", mount_path);
+  REXSYS_DEBUG("  Registered symbolic links: game:, d:, gamedata:");
 
   // Mount update_data_root as update:\ if provided
   if (!update_data_root_.empty()) {
