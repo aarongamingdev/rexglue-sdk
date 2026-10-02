@@ -247,6 +247,16 @@ X_STATUS VirtualFileSystem::OpenFile(Entry* root_entry, const std::string_view p
     }
   }
 
+  const bool on_game_mount =
+      parent_entry && parent_entry->device() &&
+      parent_entry->device()->mount_path() == "\\Device\\Harddisk0\\Partition1";
+  if (on_game_mount && !is_directory) {
+    REXFS_WARN("OpenFile {} disp={} access={:#x} in_tree={}", path,
+               (uint32_t)creation_disposition, desired_access, entry != nullptr);
+    creation_disposition = FileDisposition::kOpen;
+    desired_access &= ~(FileAccess::kFileWriteData | FileAccess::kFileAppendData);
+  }
+
   // Check if exists (if we need it to), or that it doesn't (if it shouldn't).
   switch (creation_disposition) {
     case FileDisposition::kOpen:
