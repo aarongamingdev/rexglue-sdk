@@ -513,32 +513,50 @@ u32 NtRemoveIoCompletion_entry(u32 handle, mapped_u32 key_context, mapped_u32 ap
   return status;
 }
 
-u32 NtQueryFullAttributesFile_entry(ppc_ptr_t<X_OBJECT_ATTRIBUTES> obj_attribs,
-                                    ppc_ptr_t<X_FILE_NETWORK_OPEN_INFORMATION> file_info) {
-  auto object_name = REX_KERNEL_MEMORY()->TranslateVirtual<X_ANSI_STRING*>(obj_attribs->name_ptr);
-  auto path_str = util::TranslateAnsiPath(REX_KERNEL_MEMORY(), object_name);
+u32 NtQueryFullAttributesFile_entry(
+    ppc_ptr_t<X_OBJECT_ATTRIBUTES> obj_attribs,
+    ppc_ptr_t<X_FILE_NETWORK_OPEN_INFORMATION> file_info) {
+  auto object_name =
+      REX_KERNEL_MEMORY()->TranslateVirtual<X_ANSI_STRING*>(obj_attribs->name_ptr);
+  auto path_str =
+      util::TranslateAnsiPath(REX_KERNEL_MEMORY(), object_name);
   REXKRNL_IMPORT_TRACE("NtQueryFullAttributesFile", "path={}", path_str);
 
   object_ref<XFile> root_file;
-  if (obj_attribs->root_directory != 0xFFFFFFFD &&  // ObDosDevices
+  if (obj_attribs->root_directory != 0xFFFFFFFD &&
       obj_attribs->root_directory != 0) {
-    root_file = REX_KERNEL_OBJECTS()->LookupObject<XFile>(obj_attribs->root_directory);
-    assert_not_null(root_file);
-    assert_true(root_file->type() == XObject::Type::File);
-    assert_always();
+    root_file =
+        REX_KERNEL_OBJECTS()->LookupObject<XFile>(obj_attribs->root_directory);
+
+    if (!root_file) {
+      return X_STATUS_INVALID_HANDLE;
+    }
+
+    if (root_file->type() != XObject::Type::File) {
+      return X_STATUS_INVALID_HANDLE;
+    }
   }
 
-  auto target_path = util::TranslateAnsiPath(REX_KERNEL_MEMORY(), object_name);
+  auto target_path =
+      util::TranslateAnsiPath(REX_KERNEL_MEMORY(), object_name);
 
-  // Enforce that the path is ASCII.
   if (!IsValidPath(target_path, false)) {
     return X_STATUS_OBJECT_NAME_INVALID;
   }
 
-  // Resolve the file using the virtual file system.
-  auto entry = REX_KERNEL_FS()->ResolvePath(target_path);
+  const bool is_absolute =
+      target_path.find(':') != std::string_view::npos ||
+      rex::string::utf8_starts_with(target_path, "\\");
+
+  rex::filesystem::Entry* entry = nullptr;
+
+  if (root_file && !is_absolute) {
+    entry = root_file->entry()->ResolvePath(target_path);
+  } else {
+    entry = REX_KERNEL_FS()->ResolvePath(target_path);
+  }
+
   if (entry) {
-    // Found.
     file_info->creation_time = entry->create_timestamp();
     file_info->last_access_time = entry->access_timestamp();
     file_info->last_write_time = entry->write_timestamp();
@@ -547,11 +565,16 @@ u32 NtQueryFullAttributesFile_entry(ppc_ptr_t<X_OBJECT_ATTRIBUTES> obj_attribs,
     file_info->end_of_file = entry->size();
     file_info->attributes = entry->attributes();
 
-    REXKRNL_IMPORT_RESULT("NtQueryFullAttributesFile", "0x0 size={}", (uint64_t)entry->size());
+    REXKRNL_IMPORT_RESULT(
+        "NtQueryFullAttributesFile",
+        "0x0 size={}",
+        (uint64_t)entry->size());
     return X_STATUS_SUCCESS;
   }
 
-  REXKRNL_IMPORT_RESULT("NtQueryFullAttributesFile", "X_STATUS_NO_SUCH_FILE");
+  REXKRNL_IMPORT_RESULT(
+      "NtQueryFullAttributesFile",
+      "X_STATUS_NO_SUCH_FILE");
   return X_STATUS_NO_SUCH_FILE;
 }
 
