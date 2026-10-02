@@ -216,7 +216,9 @@ X_STATUS VirtualFileSystem::OpenFile(Entry* root_entry, const std::string_view p
   Entry* entry = nullptr;
 
   auto base_path = rex::string::utf8_find_base_guest_path(path);
-  const bool is_absolute = path.find(':') != std::string_view::npos || rex::string::utf8_starts_with(path, "\\");
+  const bool is_absolute =
+      path.find(':') != std::string_view::npos ||
+      rex::string::utf8_starts_with(path, "\\");
 
   if (!base_path.empty()) {
     if (root_entry && !is_absolute) {
