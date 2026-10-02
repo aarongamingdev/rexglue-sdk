@@ -216,17 +216,8 @@ X_STATUS VirtualFileSystem::OpenFile(Entry* root_entry, const std::string_view p
   Entry* entry = nullptr;
 
   auto base_path = rex::string::utf8_find_base_guest_path(path);
-    const bool is_absolute =
-      path.find(':') != std::string_view::npos
-      || rex::string::utf8_starts_with(path, "\\");
-
   if (!base_path.empty()) {
-    if (root_entry && !is_absolute) {
-      parent_entry = root_entry->ResolvePath(base_path);
-    } else {
-      parent_entry = ResolvePath(base_path);
-    }
-
+    parent_entry = !root_entry ? ResolvePath(base_path) : root_entry->ResolvePath(base_path);
     if (!parent_entry) {
       *out_action = FileAction::kDoesNotExist;
       return X_STATUS_NO_SUCH_FILE;
@@ -235,11 +226,7 @@ X_STATUS VirtualFileSystem::OpenFile(Entry* root_entry, const std::string_view p
     auto file_name = rex::string::utf8_find_name_from_guest_path(path);
     entry = parent_entry->GetChild(file_name);
   } else {
-    if (root_entry && !is_absolute) {
-      entry = root_entry->GetChild(path);
-    } else {
-      entry = ResolvePath(path);
-    }
+    entry = !root_entry ? ResolvePath(path) : root_entry->GetChild(path);
   }
 
   if (entry) {
